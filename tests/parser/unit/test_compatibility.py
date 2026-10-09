@@ -33,7 +33,7 @@ def test_rejects_paperless_versions_outside_supported_minor(
 
     message = str(error.value)
     assert running_version in message
-    assert ">=3.1,<3.2" in message
+    assert ">=3.1,<3.4" in message
     assert "paperless-docling 0.1.0" in message
 
 
