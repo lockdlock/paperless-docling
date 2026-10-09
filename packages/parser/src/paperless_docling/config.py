@@ -102,9 +102,7 @@ class PluginConfig:
             "PAPERLESS_DOCLING_PROFILE_VERSION",
         )
 
-        cache_dir = Path(
-            environ.get("PAPERLESS_DOCLING_CACHE_DIR", "/tmp"),
-        )
+        cache_dir = Path(_required(environ, "PAPERLESS_DOCLING_CACHE_DIR"))
         _validate_cache_dir(cache_dir, "PAPERLESS_DOCLING_CACHE_DIR")
 
         preset = environ.get("PAPERLESS_DOCLING_PRESET", DEFAULT_PRESET)
