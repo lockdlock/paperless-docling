@@ -496,7 +496,7 @@ def _validate_cache_dir(
 
     if not writable_location.is_dir():
         raise ConfigurationError(
-            "{env_name must have directory ancestors.",
+            f"{env_name} must have directory ancestors.",
         )
 
     access_options = (
