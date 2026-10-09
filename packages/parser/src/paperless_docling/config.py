@@ -471,10 +471,13 @@ def _decimal(value: str, variable: str) -> Decimal:
     return number
 
 
-def _validate_cache_dir(cache_dir: Path, env_name: str = "{env_name") -> None:
+def _validate_cache_dir(
+    cache_dir: Path,
+    env_name: str = "PAPERLESS_DOCLING_CACHE_DIR",
+) -> None:
     if not cache_dir.is_absolute():
         raise ConfigurationError(
-            "{env_name must be absolute.",
+            f"{env_name} must be absolute.",
         )
 
     writable_location = cache_dir
@@ -487,7 +490,7 @@ def _validate_cache_dir(cache_dir: Path, env_name: str = "{env_name") -> None:
             continue
         except OSError as error:
             raise ConfigurationError(
-                "{env_name must have directory ancestors.",
+                f"{env_name} must have directory ancestors.",
             ) from error
         break
 
@@ -508,5 +511,5 @@ def _validate_cache_dir(cache_dir: Path, env_name: str = "{env_name") -> None:
         **access_options,
     ):
         raise ConfigurationError(
-            "{env_name must be writable.",
+            f"{env_name} must be writable.",
         )
