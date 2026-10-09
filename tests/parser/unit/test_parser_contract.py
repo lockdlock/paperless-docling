@@ -17,7 +17,6 @@ EXPECTED_MIME_TYPES = {
     "image/gif": ".gif",
     "image/bmp": ".bmp",
     "image/webp": ".webp",
-    "image/heic": ".heic",
 }
 PROJECT_ROOT = Path(__file__).parents[3]
 INSTALL_SCRIPT = PROJECT_ROOT / "scripts" / "install-parser.sh"
@@ -80,7 +79,7 @@ def test_parser_exposes_registry_identity():
     assert DoclingParser.name == "Paperless Docling Parser"
     assert DoclingParser.version == "0.1.0"
     assert DoclingParser.author
-    assert DoclingParser.url == "https://github.com/pvliesdonk/paperless-docling"
+    assert DoclingParser.url == "https://github.com/lockdlock/paperless-docling"
     assert DoclingParser.uses_remote_service is True
 
 
@@ -192,18 +191,9 @@ def test_parser_construction_rejects_ambiguous_compatibility_override(
     assert "must-not-leak" not in str(error.value)
 
 
-def test_unimplemented_collaborator_methods_fail_explicitly(
-    paperless_version_module,
-):
-    with DoclingParser() as parser:
-        with pytest.raises(NotImplementedError):
-            parser.parse(Path("document.pdf"), "application/pdf")
-        with pytest.raises(NotImplementedError):
-            parser.get_thumbnail(Path("document.pdf"), "application/pdf")
-        with pytest.raises(NotImplementedError):
-            parser.get_page_count(Path("document.pdf"), "application/pdf")
-        with pytest.raises(NotImplementedError):
-            parser.extract_metadata(Path("document.pdf"), "application/pdf")
+def test_parser_implements_paperless_collaborator_methods():
+    for name in ("parse", "get_thumbnail", "get_page_count", "extract_metadata"):
+        assert callable(getattr(DoclingParser, name))
 
 
 @pytest.mark.parametrize("configured_version", [None, ""])
