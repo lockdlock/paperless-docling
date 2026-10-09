@@ -211,7 +211,10 @@ class DoclingParser:
             / f"{document_path.stem}-{next(__import__('tempfile')._get_candidate_names())}{suffix}"
         )
 
-        shutil.copy2(document_path, cache_path)
+        # copy2 は拡張属性(xattr)まで読むため、rclone mount 等の FUSE 上の
+        # 元ファイルでは OSError(EIO) になる。キャッシュ用の一時コピーなので
+        # 内容と権限だけをコピーする copy を使う。
+        shutil.copy(document_path, cache_path)
 
         return cache_path
 
