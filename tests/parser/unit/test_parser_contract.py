@@ -2,8 +2,10 @@ import inspect
 import os
 import subprocess
 import sys
+import types
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from paperless_docling.errors import IncompatiblePaperlessError
@@ -11,6 +13,21 @@ from paperless_docling.parser import DoclingParser
 
 EXPECTED_MIME_TYPES = {
     "application/pdf": ".pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+    "application/vnd.ms-powerpoint": ".ppt",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "application/vnd.ms-excel": ".xls",
+    "application/rtf": ".rtf",
+    "application/vnd.oasis.opendocument.text": ".odt",
+    "application/vnd.oasis.opendocument.spreadsheet": ".ods",
+    "application/vnd.oasis.opendocument.presentation": ".odp",
+    "text/html": ".html",
+    "application/xhtml+xml": ".html",
+    "application/x-mimearchive": ".mhtml",
+    "multipart/related": ".mhtml",
+    "text/csv": ".csv",
     "image/jpeg": ".jpg",
     "image/png": ".png",
     "image/tiff": ".tif",
@@ -165,8 +182,38 @@ def test_parser_matches_paperless_3_1_call_signatures():
     )
 
 
+@pytest.fixture
+def paperless_runtime_fakes(monkeypatch, tmp_path):
+    django_module = types.ModuleType("django")
+    django_conf_module = types.ModuleType("django.conf")
+    django_conf_module.settings = SimpleNamespace(
+        SCRATCH_DIR=tmp_path / "scratch",
+        TIKA_GOTENBERG_ENDPOINT="http://gotenberg.example.test",
+        CELERY_TASK_TIME_LIMIT=300,
+    )
+    django_module.conf = django_conf_module
+    monkeypatch.setitem(sys.modules, "django", django_module)
+    monkeypatch.setitem(sys.modules, "django.conf", django_conf_module)
+
+    gotenberg_module = types.ModuleType("gotenberg_client")
+
+    class FakeGotenbergClient:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return None
+
+    gotenberg_module.GotenbergClient = FakeGotenbergClient
+    monkeypatch.setitem(sys.modules, "gotenberg_client", gotenberg_module)
+
+
 def test_parser_context_removes_temporary_directory_after_exception(
     paperless_version_module,
+    paperless_runtime_fakes,
 ):
     tempdir = None
 
@@ -184,16 +231,17 @@ def test_parser_construction_checks_paperless_compatibility(
     monkeypatch,
     paperless_version_module,
 ):
-    monkeypatch.setattr(paperless_version_module, "__version__", (3, 2, 0))
+    monkeypatch.setattr(paperless_version_module, "__version__", (3, 0, 0))
     monkeypatch.setenv("PAPERLESS_DOCLING_ALLOW_UNSUPPORTED_PAPERLESS", "false")
 
-    with pytest.raises(IncompatiblePaperlessError, match="3.2.0"):
+    with pytest.raises(IncompatiblePaperlessError, match="3.0.0"):
         DoclingParser()
 
 
 def test_parser_construction_honors_explicit_compatibility_override(
     monkeypatch,
     paperless_version_module,
+    paperless_runtime_fakes,
 ):
     monkeypatch.setattr(paperless_version_module, "__version__", (3, 2, 0))
     monkeypatch.setenv("PAPERLESS_DOCLING_ALLOW_UNSUPPORTED_PAPERLESS", "true")
