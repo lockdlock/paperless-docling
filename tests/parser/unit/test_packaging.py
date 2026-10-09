@@ -35,7 +35,7 @@ def built_wheel(tmp_path_factory):
     return next(output_dir.glob("paperless_docling-*.whl"))
 
 
-def test_built_wheel_declares_runtime_contract_without_dependencies(built_wheel):
+def test_built_wheel_declares_runtime_dependencies(built_wheel):
     with zipfile.ZipFile(built_wheel) as archive:
         metadata_path = next(
             name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
@@ -44,7 +44,9 @@ def test_built_wheel_declares_runtime_contract_without_dependencies(built_wheel)
 
     assert set(metadata["Requires-Python"].split(",")) == {">=3.14", "<3.15"}
     assert metadata["License-Expression"] == "MIT"
-    assert metadata.get_all("Requires-Dist") is None
+    assert metadata.get_all("Requires-Dist") == [
+        "docling-slim[service-client]>=2.134.0",
+    ]
 
 
 def test_built_wheel_declares_exact_parser_entry_point(built_wheel):
@@ -104,7 +106,6 @@ def test_wheel_installs_and_loads_parser_entry_point_on_python_3_14(
     load_result = subprocess.run(
         [
             sys.executable,
-            "-S",
             "-c",
             """
 import sys
