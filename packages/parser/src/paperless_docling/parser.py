@@ -5,21 +5,9 @@ from contextlib import ExitStack, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
-from django.conf import settings
-from gotenberg_client import GotenbergClient
-from gotenberg_client.options import PdfAFormat
-
 from docling.datamodel.service.options import ConvertDocumentsOptions
 from docling.service_client import DoclingServiceClient
 from docling.service_client.client import StatusWatcherKind
-
-from documents.parsers import ParseError, make_thumbnail_from_pdf
-from paperless.config import OutputTypeConfig
-from paperless.models import OutputTypeChoices
-from paperless.parsers.utils import (
-    extract_pdf_metadata,
-    get_page_count_for_pdf,
-)
 
 from paperless_docling import __version__
 from paperless_docling.compatibility import (
@@ -117,6 +105,8 @@ class DoclingParser:
         self.logging_group = logging_group
         self.config = PluginConfig.from_environment()
 
+        from django.conf import settings
+
         settings.SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
         self.tempdir = Path(
             __import__("tempfile").mkdtemp(
@@ -132,6 +122,9 @@ class DoclingParser:
         self._gotenberg_client: GotenbergClient | None = None
 
     def __enter__(self) -> Self:
+        from django.conf import settings
+        from gotenberg_client import GotenbergClient
+
         self._gotenberg_client = self._exit_stack.enter_context(
             GotenbergClient(
                 host=settings.TIKA_GOTENBERG_ENDPOINT,
@@ -223,6 +216,11 @@ class DoclingParser:
         return cache_path
 
     def _convert_to_pdf(self, document_path: Path) -> Path:
+        from gotenberg_client.options import PdfAFormat
+
+        from documents.parsers import ParseError
+        from paperless.config import OutputTypeConfig
+        from paperless.models import OutputTypeChoices
         if self._gotenberg_client is None:
             raise RuntimeError(
                 "Gotenberg client is not initialized. "
@@ -267,6 +265,8 @@ class DoclingParser:
         return self.archive_path
 
     def get_thumbnail(self, document_path: Path, mime_type: str) -> Path:
+        from documents.parsers import make_thumbnail_from_pdf
+
         return make_thumbnail_from_pdf(
             self.archive_path or document_path,
             self.tempdir,
@@ -277,6 +277,8 @@ class DoclingParser:
         document_path: Path,
         mime_type: str,
     ) -> int | None:
+        from paperless.parsers.utils import get_page_count_for_pdf
+
         if mime_type == "application/pdf":
             return get_page_count_for_pdf(document_path)
         if self.archive_path is not None:
@@ -288,6 +290,8 @@ class DoclingParser:
         document_path: Path,
         mime_type: str,
     ) -> list[MetadataEntry]:
+        from paperless.parsers.utils import extract_pdf_metadata
+
         if mime_type == "application/pdf":
             return extract_pdf_metadata(document_path)
         if self.archive_path is not None:
