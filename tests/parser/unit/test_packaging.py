@@ -42,7 +42,7 @@ def test_built_wheel_declares_runtime_dependencies(built_wheel):
         )
         metadata = BytesParser(policy=default).parsebytes(archive.read(metadata_path))
 
-    assert set(metadata["Requires-Python"].split(",")) == {">=3.14", "<3.15"}
+    assert set(metadata["Requires-Python"].split(",")) == {">=3.11", "<3.15"}
     assert metadata["License-Expression"] == "MIT"
     assert metadata.get_all("Requires-Dist") == [
         "docling-slim[service-client]>=2.134.0",
