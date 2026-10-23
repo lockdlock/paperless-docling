@@ -31,6 +31,9 @@ SUCCESS_STATUSES = {"success"}
 FAILURE_STATUSES = {"failure"}
 CONVERT_FAILURE_STATUSES = {"failure"}
 
+# サーバーが wait の間ブロックせず即答する場合でも、短時間に大量のポーリングをしないための最小間隔（秒）
+MIN_POLL_PAUSE = 0.5
+
 
 class DoclingServeError(RuntimeError):
     """Docling Serve との通信または変換の失敗。"""
@@ -141,6 +144,7 @@ def _wait(
                 "Docling Serve did not finish before the configured deadline.",
             )
 
+        poll_started = time.monotonic()
         try:
             response = client.get(
                 POLL_PATH.format(task_id=task_id),
@@ -160,6 +164,12 @@ def _wait(
         if status in FAILURE_STATUSES:
             message = body.get("error_message") or "no error message"
             raise DoclingServeError(f"Docling Serve reported a failure: {message}")
+
+        # 即答された場合だけ、最小間隔になるまで待つ（wait で待たされた場合は追加で待たない）
+        pause = min(MIN_POLL_PAUSE, poll_interval) - (time.monotonic() - poll_started)
+        remaining = deadline - (time.monotonic() - started_at)
+        if pause > 0 and remaining > 0:
+            time.sleep(min(pause, remaining))
 
 
 def _fetch_markdown(client: httpx.Client, task_id: str) -> str:
