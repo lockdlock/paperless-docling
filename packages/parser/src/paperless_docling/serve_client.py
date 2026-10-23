@@ -32,7 +32,7 @@ FAILURE_STATUSES = {"failure"}
 CONVERT_FAILURE_STATUSES = {"failure"}
 
 # サーバーが wait の間ブロックせず即答する場合でも、短時間に大量のポーリングをしないための最小間隔（秒）
-MIN_POLL_PAUSE = 0.5
+MIN_POLL_PAUSE = 1.0
 
 
 class DoclingServeError(RuntimeError):

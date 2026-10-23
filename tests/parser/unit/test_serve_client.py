@@ -157,9 +157,9 @@ def test_connection_error_is_wrapped(tmp_path):
 def test_polling_pauses_when_the_server_answers_immediately(tmp_path, monkeypatch):
     sleeps = []
     monkeypatch.setattr(serve_client.time, "sleep", sleeps.append)
-    monkeypatch.setattr(serve_client, "MIN_POLL_PAUSE", 0.5)
+    monkeypatch.setattr(serve_client, "MIN_POLL_PAUSE", 1.0)
     handler = serve_handler(statuses=("pending", "pending", "success"))
     run(tmp_path, handler, poll_interval=2.0)
     # 即答の pending が 2 回 → 2 回待つ。success のあとは待たない
     assert len(sleeps) == 2
-    assert all(0 < pause <= 0.5 for pause in sleeps)
+    assert all(0 < pause <= 1.0 for pause in sleeps)
