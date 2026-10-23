@@ -64,3 +64,45 @@ def test_export_returns_text(flag):
     document = build_document(with_picture_text=True)
 
     assert isinstance(export_markdown(document, traverse_pictures=flag), str)
+
+
+def test_markdown_settings_are_forwarded_to_native_export(monkeypatch):
+    from docling_core.types.doc import ImageRefMode
+
+    document = build_document(with_picture_text=False)
+    captured = {}
+
+    def fake_export(self, **kwargs):
+        captured.update(kwargs)
+        return "ok"
+
+    monkeypatch.setattr(DoclingDocument, "export_to_markdown", fake_export)
+
+    export_markdown(
+        document,
+        traverse_pictures=False,
+        image_mode=ImageRefMode.REFERENCED,
+        page_break_placeholder="<!-- page -->",
+        compact_tables=True,
+    )
+
+    assert captured == {
+        "image_mode": ImageRefMode.REFERENCED,
+        "page_break_placeholder": "<!-- page -->",
+        "compact_tables": True,
+    }
+
+
+def test_empty_page_break_placeholder_is_sent_as_none(monkeypatch):
+    document = build_document(with_picture_text=False)
+    captured = {}
+
+    def fake_export(self, **kwargs):
+        captured.update(kwargs)
+        return "ok"
+
+    monkeypatch.setattr(DoclingDocument, "export_to_markdown", fake_export)
+
+    export_markdown(document, traverse_pictures=False, page_break_placeholder="")
+
+    assert captured["page_break_placeholder"] is None

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Any
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -27,6 +29,27 @@ MAX_CACHE_MAX_AGE = timedelta(days=365)
 MAX_CACHE_MAX_BYTES = 1_099_511_627_776
 
 _ACCESS_SUPPORTS_EFFECTIVE_IDS = os.access in os.supports_effective_ids
+
+# 任意設定（未設定ならリクエストに含めず、Docling Serve の既定値に任せる）
+OPTIONAL_STRING_OPTIONS = {
+    "PAPERLESS_DOCLING_VLM_PIPELINE_PRESET": "vlm_pipeline_preset",
+    "PAPERLESS_DOCLING_LAYOUT_PRESET": "layout_preset",
+    "PAPERLESS_DOCLING_TABLE_STRUCTURE_PRESET": "table_structure_preset",
+    "PAPERLESS_DOCLING_CODE_FORMULA_PRESET": "code_formula_preset",
+    "PAPERLESS_DOCLING_CHART_EXTRACTION_PRESET": "chart_extraction_preset",
+    "PAPERLESS_DOCLING_PICTURE_CLASSIFICATION_PRESET": "picture_classification_preset",
+    "PAPERLESS_DOCLING_PICTURE_DESCRIPTION_PRESET": "picture_description_preset",
+}
+OPTIONAL_BOOLEAN_OPTIONS = {
+    "PAPERLESS_DOCLING_DO_CODE_ENRICHMENT": "do_code_enrichment",
+    "PAPERLESS_DOCLING_DO_FORMULA_ENRICHMENT": "do_formula_enrichment",
+    "PAPERLESS_DOCLING_DO_CHART_EXTRACTION": "do_chart_extraction",
+    "PAPERLESS_DOCLING_DO_PICTURE_CLASSIFICATION": "do_picture_classification",
+    "PAPERLESS_DOCLING_DO_PICTURE_DESCRIPTION": "do_picture_description",
+    "PAPERLESS_DOCLING_ABORT_ON_ERROR": "abort_on_error",
+}
+EXTRA_OPTIONS_VARIABLE = "PAPERLESS_DOCLING_EXTRA_OPTIONS"
+DOCUMENT_TIMEOUT_VARIABLE = "PAPERLESS_DOCLING_DOCUMENT_TIMEOUT_SECONDS"
 
 
 @dataclass(frozen=True)
@@ -67,6 +90,10 @@ class PluginConfig:
     allow_unsupported_paperless: bool
     _token: str | None = field(repr=False, compare=False)
     traverse_pictures: bool = False
+    optional_request_options: dict[str, Any] = field(
+        default_factory=dict,
+        compare=True,
+    )
 
     @property
     def token(self) -> str | None:
@@ -241,6 +268,8 @@ class PluginConfig:
             default=False,
         )
 
+        optional_request_options = _optional_request_options(environ)
+
         try:
             allow_unsupported = allow_unsupported_paperless(environ)
         except IncompatiblePaperlessError as error:
@@ -276,6 +305,7 @@ class PluginConfig:
             allow_unsupported_paperless=allow_unsupported,
             _token=token,
             traverse_pictures=traverse_pictures,
+            optional_request_options=optional_request_options,
         )
 
 
@@ -365,6 +395,57 @@ def _required_boolean(
     raise ConfigurationError(
         f"{variable} must be a boolean.",
     )
+
+
+def _optional_request_options(environ: Mapping[str, str]) -> dict[str, Any]:
+    """Docling Serve へ追加で送る任意オプションを集める（未設定の項目は含めない）。"""
+    options: dict[str, Any] = {}
+
+    for variable, option in OPTIONAL_STRING_OPTIONS.items():
+        value = environ.get(variable, "").strip()
+        if value:
+            options[option] = value
+
+    for variable, option in OPTIONAL_BOOLEAN_OPTIONS.items():
+        if environ.get(variable, "").strip():
+            options[option] = _required_boolean(environ, variable)
+
+    if environ.get(DOCUMENT_TIMEOUT_VARIABLE, "").strip():
+        options["document_timeout"] = _required_positive_float(
+            environ,
+            DOCUMENT_TIMEOUT_VARIABLE,
+        )
+
+    raw_extra = environ.get(EXTRA_OPTIONS_VARIABLE, "").strip()
+    if raw_extra:
+        options.update(_extra_options(raw_extra))
+
+    return options
+
+
+def _extra_options(raw: str) -> dict[str, Any]:
+    from docling.datamodel.service.options import ConvertDocumentsOptions
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        raise ConfigurationError(
+            f"{EXTRA_OPTIONS_VARIABLE} must be a valid JSON object.",
+        ) from None
+
+    if not isinstance(parsed, dict):
+        raise ConfigurationError(
+            f"{EXTRA_OPTIONS_VARIABLE} must be a JSON object.",
+        )
+
+    unknown = sorted(set(parsed) - set(ConvertDocumentsOptions.model_fields))
+    if unknown:
+        raise ConfigurationError(
+            f"{EXTRA_OPTIONS_VARIABLE} contains unknown options: "
+            f"{', '.join(unknown)}.",
+        )
+
+    return parsed
 
 
 def _optional_boolean(

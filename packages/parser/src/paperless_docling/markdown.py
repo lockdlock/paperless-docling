@@ -19,28 +19,44 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from docling_core.types.doc.base import ImageRefMode
+
 if TYPE_CHECKING:
     from docling_core.types.doc import DoclingDocument
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def export_markdown(document: DoclingDocument, *, traverse_pictures: bool) -> str:
+def export_markdown(
+    document: DoclingDocument,
+    *,
+    traverse_pictures: bool,
+    image_mode: ImageRefMode = ImageRefMode.PLACEHOLDER,
+    page_break_placeholder: str | None = None,
+    compact_tables: bool = False,
+) -> str:
+    # 設定値（既定値と同じなら、従来の出力と同じ）
+    native = {
+        "image_mode": image_mode,
+        "page_break_placeholder": page_break_placeholder or None,
+        "compact_tables": compact_tables,
+    }
+
     if not traverse_pictures:
-        return document.export_to_markdown()
+        return document.export_to_markdown(**native)
 
     try:
-        return _export_without_placeholder(document)
+        return _export_without_placeholder(document, native)
     except Exception:  # docling-core の内部構造が変わった場合の退避
         _LOGGER.warning(
             "Falling back to export_to_markdown(traverse_pictures=True); "
             "picture placeholders will remain.",
             exc_info=True,
         )
-        return document.export_to_markdown(traverse_pictures=True)
+        return document.export_to_markdown(traverse_pictures=True, **native)
 
 
-def _export_without_placeholder(document: DoclingDocument) -> str:
+def _export_without_placeholder(document: DoclingDocument, native: dict) -> str:
     from docling_core.transforms.serializer.common import create_ser_result
     from docling_core.transforms.serializer.markdown import (
         MarkdownDocSerializer,
@@ -69,6 +85,9 @@ def _export_without_placeholder(document: DoclingDocument) -> str:
             labels=DOCUMENT_TOKENS_EXPORT_LABELS,
             layers=DEFAULT_CONTENT_LAYERS,
             traverse_pictures=True,
+            image_mode=native["image_mode"],
+            page_break_placeholder=native["page_break_placeholder"],
+            compact_tables=native["compact_tables"],
         ),
     )
     return serializer.serialize().text
