@@ -65,7 +65,7 @@ cd /opt/paperless
 uv pip install --python /opt/paperless/.venv/bin/python /opt/paperless-docling/packages/parser
 ```
 
-Check that Paperless-ngx can find the parser (the second command also checks that the configuration can be read):
+Check that Paperless-ngx can find the parser:
 
 ```bash
 /opt/paperless/.venv/bin/python -c "from importlib.metadata import entry_points; print([(e.name, e.value) for e in entry_points(group='paperless_ngx.parsers')])"
