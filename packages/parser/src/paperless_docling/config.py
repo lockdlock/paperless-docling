@@ -89,7 +89,6 @@ class PluginConfig:
     cache_max_bytes: int
     allow_unsupported_paperless: bool
     _token: str | None = field(repr=False, compare=False)
-    traverse_pictures: bool = False
     optional_request_options: dict[str, Any] = field(
         default_factory=dict,
         compare=True,
@@ -262,12 +261,6 @@ class PluginConfig:
             maximum=MAX_CACHE_MAX_BYTES,
         )
 
-        traverse_pictures = _optional_boolean(
-            environ,
-            "PAPERLESS_DOCLING_TRAVERSE_PICTURES",
-            default=False,
-        )
-
         optional_request_options = _optional_request_options(environ)
 
         try:
@@ -304,7 +297,6 @@ class PluginConfig:
             cache_max_bytes=cache_max_bytes,
             allow_unsupported_paperless=allow_unsupported,
             _token=token,
-            traverse_pictures=traverse_pictures,
             optional_request_options=optional_request_options,
         )
 
@@ -446,18 +438,6 @@ def _extra_options(raw: str) -> dict[str, Any]:
         )
 
     return parsed
-
-
-def _optional_boolean(
-    environ: Mapping[str, str],
-    variable: str,
-    *,
-    default: bool,
-) -> bool:
-    if variable not in environ or not environ[variable].strip():
-        return default
-
-    return _required_boolean(environ, variable)
 
 
 def _required_positive_float(

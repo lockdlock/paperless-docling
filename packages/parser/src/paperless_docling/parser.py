@@ -5,8 +5,6 @@ from contextlib import ExitStack, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
-from docling.service_client import DoclingServiceClient
-from docling.service_client.client import StatusWatcherKind
 
 from paperless_docling import __version__
 from paperless_docling.compatibility import (
@@ -14,8 +12,8 @@ from paperless_docling.compatibility import (
     ensure_paperless_compatible,
 )
 from paperless_docling.config import PluginConfig
-from paperless_docling.markdown import export_markdown
 from paperless_docling.options import build_options
+from paperless_docling.serve_client import convert_to_markdown
 
 if TYPE_CHECKING:
     import datetime
@@ -158,27 +156,13 @@ class DoclingParser:
         try:
             options = build_options(self.config)
 
-            with DoclingServiceClient(
-                url=self.config.serve_url,
-                status_watcher=StatusWatcherKind.POLLING,
-                job_timeout=self.config.deadline.total_seconds(),
-            ) as client:
-                result = client.convert(
-                    source=cache_path,
-                    options=options,
-                )
-
-            if result is None:
-                raise RuntimeError(
-                    "Docling Serve returned no conversion result.",
-                )
-
-            self.text = export_markdown(
-                result.document,
-                traverse_pictures=self.config.traverse_pictures,
-                image_mode=self.config.image_export_mode,
-                page_break_placeholder=self.config.md_page_break_placeholder,
-                compact_tables=self.config.md_compact_tables,
+            self.text = convert_to_markdown(
+                serve_url=self.config.serve_url,
+                document_path=cache_path,
+                options=options,
+                token=self.config.token,
+                poll_interval=self.config.poll_interval.total_seconds(),
+                deadline=self.config.deadline.total_seconds(),
             )
 
             if produce_archive and mime_type != "application/pdf":
