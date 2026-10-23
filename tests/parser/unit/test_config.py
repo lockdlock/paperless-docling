@@ -482,3 +482,4 @@ def test_error_never_contains_token_value(tmp_path):
         PluginConfig.from_environment(environment)
 
     assert "highly-secret" not in str(error.value)
+

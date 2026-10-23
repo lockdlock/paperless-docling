@@ -5,9 +5,6 @@ from contextlib import ExitStack, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
-from docling.datamodel.service.options import ConvertDocumentsOptions
-from docling.service_client import DoclingServiceClient
-from docling.service_client.client import StatusWatcherKind
 
 from paperless_docling import __version__
 from paperless_docling.compatibility import (
@@ -15,6 +12,8 @@ from paperless_docling.compatibility import (
     ensure_paperless_compatible,
 )
 from paperless_docling.config import PluginConfig
+from paperless_docling.options import build_options
+from paperless_docling.serve_client import convert_to_markdown
 
 if TYPE_CHECKING:
     import datetime
@@ -155,42 +154,16 @@ class DoclingParser:
         cache_path = self._cache_input(document_path)
 
         try:
-            options = ConvertDocumentsOptions(
-                from_formats=list(self.config.from_formats),
-                to_formats=list(self.config.to_formats),
-                pipeline=self.config.pipeline,
-                do_ocr=self.config.do_ocr,
-                force_ocr=self.config.force_ocr,
-                ocr_preset=self.config.ocr_preset,
-                ocr_lang=list(self.config.ocr_lang),
-                include_images=self.config.include_images,
-                include_page_images=self.config.include_page_images,
-                images_scale=self.config.images_scale,
-                do_table_structure=self.config.do_table_structure,
-                table_mode=self.config.table_mode,
-                table_cell_matching=self.config.table_cell_matching,
-                do_pdf_heading_hierarchy=self.config.do_pdf_heading_hierarchy,
-                image_export_mode=self.config.image_export_mode,
-                md_page_break_placeholder=self.config.md_page_break_placeholder,
-                md_compact_tables=self.config.md_compact_tables,
+            options = build_options(self.config)
+
+            self.text = convert_to_markdown(
+                serve_url=self.config.serve_url,
+                document_path=cache_path,
+                options=options,
+                token=self.config.token,
+                poll_interval=self.config.poll_interval.total_seconds(),
+                deadline=self.config.deadline.total_seconds(),
             )
-
-            with DoclingServiceClient(
-                url=self.config.serve_url,
-                status_watcher=StatusWatcherKind.POLLING,
-                job_timeout=self.config.deadline.total_seconds(),
-            ) as client:
-                result = client.convert(
-                    source=cache_path,
-                    options=options,
-                )
-
-            if result is None:
-                raise RuntimeError(
-                    "Docling Serve returned no conversion result.",
-                )
-
-            self.text = result.document.export_to_markdown()
 
             if produce_archive and mime_type != "application/pdf":
                 self.archive_path = self._convert_to_pdf(document_path)
