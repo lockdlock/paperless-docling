@@ -482,3 +482,31 @@ def test_error_never_contains_token_value(tmp_path):
         PluginConfig.from_environment(environment)
 
     assert "highly-secret" not in str(error.value)
+
+
+def test_traverse_pictures_defaults_to_false(tmp_path):
+    config = PluginConfig.from_environment(valid_env(tmp_path))
+
+    assert config.traverse_pictures is False
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("true", True), ("1", True), ("false", False), ("off", False), ("", False)],
+)
+def test_traverse_pictures_is_parsed_as_an_optional_boolean(tmp_path, value, expected):
+    environment = valid_env(tmp_path, PAPERLESS_DOCLING_TRAVERSE_PICTURES=value)
+
+    config = PluginConfig.from_environment(environment)
+
+    assert config.traverse_pictures is expected
+
+
+def test_traverse_pictures_rejects_invalid_values(tmp_path):
+    environment = valid_env(tmp_path, PAPERLESS_DOCLING_TRAVERSE_PICTURES="maybe")
+
+    with pytest.raises(
+        ConfigurationError,
+        match="PAPERLESS_DOCLING_TRAVERSE_PICTURES",
+    ):
+        PluginConfig.from_environment(environment)

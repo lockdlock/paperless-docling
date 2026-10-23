@@ -66,6 +66,7 @@ class PluginConfig:
     cache_max_bytes: int
     allow_unsupported_paperless: bool
     _token: str | None = field(repr=False, compare=False)
+    traverse_pictures: bool = False
 
     @property
     def token(self) -> str | None:
@@ -234,6 +235,12 @@ class PluginConfig:
             maximum=MAX_CACHE_MAX_BYTES,
         )
 
+        traverse_pictures = _optional_boolean(
+            environ,
+            "PAPERLESS_DOCLING_TRAVERSE_PICTURES",
+            default=False,
+        )
+
         try:
             allow_unsupported = allow_unsupported_paperless(environ)
         except IncompatiblePaperlessError as error:
@@ -268,6 +275,7 @@ class PluginConfig:
             cache_max_bytes=cache_max_bytes,
             allow_unsupported_paperless=allow_unsupported,
             _token=token,
+            traverse_pictures=traverse_pictures,
         )
 
 
@@ -357,6 +365,18 @@ def _required_boolean(
     raise ConfigurationError(
         f"{variable} must be a boolean.",
     )
+
+
+def _optional_boolean(
+    environ: Mapping[str, str],
+    variable: str,
+    *,
+    default: bool,
+) -> bool:
+    if variable not in environ or not environ[variable].strip():
+        return default
+
+    return _required_boolean(environ, variable)
 
 
 def _required_positive_float(

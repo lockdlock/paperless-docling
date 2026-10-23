@@ -15,6 +15,7 @@ from paperless_docling.compatibility import (
     ensure_paperless_compatible,
 )
 from paperless_docling.config import PluginConfig
+from paperless_docling.markdown import export_markdown
 
 if TYPE_CHECKING:
     import datetime
@@ -190,7 +191,10 @@ class DoclingParser:
                     "Docling Serve returned no conversion result.",
                 )
 
-            self.text = result.document.export_to_markdown()
+            self.text = export_markdown(
+                result.document,
+                traverse_pictures=self.config.traverse_pictures,
+            )
 
             if produce_archive and mime_type != "application/pdf":
                 self.archive_path = self._convert_to_pdf(document_path)

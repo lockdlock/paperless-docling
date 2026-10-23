@@ -110,6 +110,8 @@ PAPERLESS_DOCLING_DO_PDF_HEADING_HIERARCHY=true
 # Markdown
 PAPERLESS_DOCLING_MD_PAGE_BREAK_PLACEHOLDER=
 PAPERLESS_DOCLING_MD_COMPACT_TABLES=false
+# Optional: output text found inside picture regions (default: false)
+# PAPERLESS_DOCLING_TRAVERSE_PICTURES=true
 
 # Request handling
 PAPERLESS_DOCLING_POLL_INTERVAL_SECONDS=2
@@ -185,6 +187,7 @@ The example configuration excludes HTML and MHTML.
 | --------------------------------------------- | -------- | --------------------------------------------------------------- |
 | `PAPERLESS_DOCLING_MD_PAGE_BREAK_PLACEHOLDER` | Empty    | Placeholder inserted at page breaks. An empty value is allowed. |
 | `PAPERLESS_DOCLING_MD_COMPACT_TABLES`         | Required | Controls compact Markdown table formatting.                     |
+| `PAPERLESS_DOCLING_TRAVERSE_PICTURES`         | `false`  | When `true`, text inside picture regions is written to the Markdown and the `<!-- image -->` placeholder is omitted for pictures that contain text. Pictures without text keep the placeholder. The Markdown is generated in this plugin (not in Docling Serve), so a server-side setting has no effect here. |
 
 ### Request handling
 
